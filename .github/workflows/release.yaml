@@ -32,6 +32,9 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: test
+        run: make ci
+
       # The release build is used in the Semantic Release step
       - name: Build
         uses: actions-rs/cargo@v1
