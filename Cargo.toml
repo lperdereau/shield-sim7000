@@ -1,6 +1,6 @@
 [package]
 name = "shield-sim7000"
-version = "0.1.0"
+version = "1.0.0-alpha.1"
 edition = "2021"
 license-file = "LICENSE"
 description = "This crate provides clients for the SIM7000 series of shields."
