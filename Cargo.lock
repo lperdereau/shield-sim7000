@@ -213,7 +213,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "shield_sim7000"
+name = "shield-sim7000"
 version = "0.1.0"
 dependencies = [
  "at-commands",

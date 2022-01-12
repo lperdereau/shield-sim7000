@@ -1,7 +1,12 @@
 [package]
-name = "shield_sim7000"
+name = "shield-sim7000"
 version = "0.1.0"
 edition = "2021"
+license-file = "LICENSE"
+description = "This crate provides clients for the SIM7000 series of shields."
+readme = "README.md"
+documentation = "https://docs.rs/shield-sim7000/"
+exclude = ["/.github", ".releaserc.yml"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
