@@ -5,7 +5,7 @@ use std::{thread, time::Duration};
 use self::at_commands::{CMGF, CMGS, MAX_SEND_SMS_SIZE};
 use crate::serial::SerialClient;
 use at_commands_crate::builder::CommandBuilder;
-use log::error;
+use log::{error, debug};
 
 pub struct SMSClient {
     client: SerialClient,

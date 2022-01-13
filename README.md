@@ -1,6 +1,6 @@
 [![build](https://github.com/lperdereau/shield-sim7000/workflows/build/badge.svg)](https://github.com/lperdereau/shield-sim7000/actions)
 ![](https://img.shields.io/crates/d/shield-sim7000.svg)
-[![BSD 3-Clause licensed](https://img.shields.io/crates/l/shield-sim7000.svg)](https://github.com/lperdereau/shield-sim7000/blob/master/LICENSE.md)
+[![BSD 3-Clause licensed](https://img.shields.io/crates/l/shield-sim7000.svg)](https://github.com/lperdereau/shield-sim7000/blob/master/LICENSE)
 
 # Shield SIM7000
 
