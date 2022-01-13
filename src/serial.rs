@@ -2,6 +2,7 @@ use log::{debug, error, info};
 use serialport::SerialPort;
 use std::io::{Read, Write};
 
+
 pub struct SerialClient {
     port: Box<dyn serialport::SerialPort>,
     pub write_locked: bool,

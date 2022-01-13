@@ -217,7 +217,9 @@ name = "shield-sim7000"
 version = "1.0.0-alpha.2"
 dependencies = [
  "at-commands",
+ "chrono",
  "log",
+ "regex",
  "serialport",
  "simplelog",
 ]

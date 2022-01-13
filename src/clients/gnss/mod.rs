@@ -1,35 +1,77 @@
 mod at_commands;
-pub mod regex;
+mod regex;
 
-use std::{thread, time::Duration};
+use at_commands_crate::builder::CommandBuilder;
+use chrono::offset::Utc;
+use chrono::{DateTime, NaiveDateTime};
+use chrono::{FixedOffset, TimeZone};
 
 use self::at_commands::{CGNSINF, CGNSPWR};
+use self::regex::GNSS_REGEX;
 use crate::serial::SerialClient;
-use at_commands_crate::builder::CommandBuilder;
-use log::{debug, error};
+use log::debug;
+use regex_crate::Regex;
 
-
+#[derive(Debug)]
 pub struct GNSSInfos {
-    pub gnss_run_status: bool,
-    pub fix_status: bool,
-    pub datetime: String,
-    pub latitude: f64,
-    pub longitude: f64,
-    pub altitude: f64,
-    pub speed: f32,
-    pub course: f32,
-    pub fix: u8,
-    pub hdop: f32,
-    pub vdop: f32,
-    pub pdop: f32,
-    pub gps_satellites_in_view: u8,
-    pub gps_satellites_used: u8,
-    pub glonass_satellites_used: u8,
-    pub carrier_to_noise_ratio: f64,
-    pub hpa: f32,
-    pub vpa: f32,
+    pub gnss_run_status: Option<bool>,
+    pub fix_status: Option<bool>,
+    pub datetime: Option<DateTime<Utc>>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub altitude: Option<f64>,
+    pub speed: Option<f32>,
+    pub course: Option<f32>,
+    pub fix: Option<u8>,
+    pub hdop: Option<f32>,
+    pub vdop: Option<f32>,
+    pub pdop: Option<f32>,
+    pub gps_satellites_in_view: Option<u8>,
+    pub gps_satellites_used: Option<u8>,
+    pub glonass_satellites_used: Option<u8>,
+    pub carrier_to_noise_ratio: Option<f64>,
+    pub hpa: Option<f32>,
+    pub vpa: Option<f32>,
 }
 
+impl GNSSInfos {
+    pub fn regex_capture_to_gnssinfo(input: &str) -> Self {
+        let re = Regex::new(GNSS_REGEX).unwrap();
+        let caps = re.captures(input).unwrap();
+        re.capture_names()
+            .flatten()
+            .filter_map(|n| Some((n, caps.name(n)?.as_str())));
+        let mut datetime: Option<DateTime<Utc>> = None;
+
+        if let Ok(str) = caps["datetime_utc"].parse::<String>() {
+            datetime = Some(Utc.from_utc_datetime(
+                &NaiveDateTime::parse_from_str(str.as_str(), "%Y%m%d%H%M%S%.3f").unwrap(),
+            ));
+        }
+        Self {
+            gnss_run_status: caps["gnss_run_status"].parse::<bool>().ok(),
+            fix_status: caps["fix_status"].parse::<bool>().ok(),
+            datetime: datetime,
+            latitude: caps["lat"].parse().ok(),
+            longitude: caps["long"].parse().ok(),
+            altitude: caps["altitude"].parse().ok(),
+            speed: caps["speed_over_gnd"].parse().ok(),
+            course: caps["course_over_gnd"].parse().ok(),
+            fix: caps["fix_mode"].parse().ok(),
+            hdop: caps["hdop"].parse().ok(),
+            pdop: caps["pdop"].parse().ok(),
+            vdop: caps["vdop"].parse().ok(),
+            gps_satellites_in_view: caps["gnss_satellites_in_view"].parse().ok(),
+            gps_satellites_used: caps["gnss_satellites_used"].parse().ok(),
+            glonass_satellites_used: caps["glonass_satellites_used"].parse().ok(),
+            carrier_to_noise_ratio: caps["carrier_to_noise_ratio"].parse().ok(),
+            hpa: caps["hpa"].parse().ok(),
+            vpa: caps["vpa"].parse().ok(),
+        }
+    }
+}
+/*
+#[derive(Debug)]
 pub struct GNSSClient {
     client: SerialClient,
 }
@@ -59,9 +101,7 @@ impl GNSSClient {
 
         self.client.send(&execute);
         time::Duration::from_millis(1000);
-        
         let gnss_infos: GNSSInfo = self.client.read_incoming_raw_data();
-        
 
         if fix_status == 1 { true } else { false };
 
@@ -88,3 +128,4 @@ impl GNSSClient {
         true
     }
 }
+*/

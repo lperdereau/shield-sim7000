@@ -7,6 +7,7 @@ use crate::serial::SerialClient;
 use at_commands_crate::builder::CommandBuilder;
 use log::error;
 
+
 pub struct SMSClient {
     client: SerialClient,
 }
