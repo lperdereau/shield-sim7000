@@ -69,7 +69,7 @@ impl SerialClient {
         self.serial_datas.push(*byte);
     }
 
-    pub fn read_incoming_raw_data(&mut self) {
+    pub fn read_incoming_raw_data(&mut self) { //should return a string
         let mut serial_data_raw: Vec<u8> = vec![];
         let mut serial_buf: Vec<u8> = vec![0; 32];
         match self.port.read(serial_buf.as_mut_slice()) {
