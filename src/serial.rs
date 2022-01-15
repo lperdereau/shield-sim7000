@@ -59,38 +59,29 @@ impl SerialClient {
         }
     }
 
-    pub fn read_line(&mut self) -> (String, String) {
+    pub fn read_line(&mut self) -> (String, Option<String>) {
         let mut serial_buf: Vec<u8> = vec![0; 1000];
         let mut cmp: usize = 0;
-        loop {
-            match self.port.bytes_to_read() {
-                Ok(_) => match self.port.read(&mut serial_buf[cmp..]) {
-                    Ok(i) => {
-                        for j in cmp..cmp + i {
-                            if j > 0 && serial_buf[j] == b'\n' && serial_buf[j - 1] == b'\r' {
-                                match std::str::from_utf8(&serial_buf[..j]) {
-                                    Ok(v) => {
-                                        match std::str::from_utf8(&serial_buf[j + 1..cmp + i]) {
-                                            Ok(u) => {
-                                                return (v.to_string(), u.to_string());
-                                            }
-                                            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-                                        }
-                                    }
-                                    Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-                                };
-                            }
-                        }
-                        cmp = cmp + i;
+        match self.port.read(&mut serial_buf.as_mut_slice()) {
+            Ok(n) => {
+                for i in cmp..cmp + n {
+                    if i > 0 && serial_buf[i] == b'\n' && serial_buf[i - 1] == b'\r' {
+                        return (
+                            String::from_utf8(serial_buf[..i].to_vec()).unwrap(),
+                            String::from_utf8(serial_buf[i + 1..cmp + n].to_vec()).ok(),
+                        );
                     }
-                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                    Err(e) => eprintln!("{:?}", e),
-                },
-                Err(e) => {
-                    error!("SHIELD: Failed to read: {}", e);
                 }
+                cmp = cmp + n;
+            },
+            Err(e) => {
+                error!("SHIELD: Failed to read line: {}", e);
             }
         }
+        return (
+            String::from_utf8(serial_buf.to_vec()).unwrap(),
+            None,
+        );
     }
 
     pub fn read_lines(&mut self, line_number: usize) -> Vec<String> {
