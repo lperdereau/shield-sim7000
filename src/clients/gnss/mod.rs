@@ -2,20 +2,14 @@ mod at_commands;
 mod regex;
 
 use at_commands_crate::builder::CommandBuilder;
-use at_commands_crate::parser::CommandParser;
 use chrono::offset::Utc;
 use chrono::{DateTime, NaiveDateTime};
-use chrono::{FixedOffset, TimeZone};
-use serialport::ClearBuffer;
-use std::time::Duration;
-use std::{thread, time};
-use std::io::BufReader;
-use std::io::BufRead;
+use chrono::TimeZone;
+use log::debug;
 
 use self::at_commands::{CGNSINF, CGNSPWR};
 use self::regex::GNSS_REGEX;
 use crate::serial::SerialClient;
-use log::debug;
 use regex_crate::Regex;
 
 #[derive(Debug)]
@@ -97,23 +91,15 @@ impl GNSSClient {
         self.client.send(set);
     }
 
-    pub fn is_gnss_fix(&mut self) -> bool {
+    pub fn get_gnss_infos(&mut self) -> bool {
         let mut buffer = [0; 128];
         let execute = CommandBuilder::create_execute(&mut buffer, true)
             .named(CGNSINF)
             .finish()
             .unwrap();
 
-        thread::sleep(Duration::from_millis(1000));
-        self.client.port.clear(ClearBuffer::Input).expect("Failed to discard input buffer");
         self.client.send(execute);
-        
-        let mut reader = BufReader::new(self.client.port.as_mut());
-        let mut my_str = String::new();
-        reader.read_line(&mut my_str).unwrap();
-        println!("Command : {:?}", my_str);
-        reader.read_line(&mut my_str).unwrap();
-        println!("Command : {:?}", my_str);
+        debug!("{:?}", self.client.read_lines(3));
         true
     }
 }

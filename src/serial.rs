@@ -1,13 +1,14 @@
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use serialport::SerialPort;
 use std::time::Duration;
-use std::{thread, time};
-use std::io::{self, Read, Write};
+use std::vec;
+use serialport::ClearBuffer;
+use std::io::Write;
+use std::io::{BufRead, BufReader};
 
 
 pub struct SerialClient {
-    pub port: Box<dyn serialport::SerialPort>,
-    pub write_locked: bool,
+    port: Box<dyn serialport::SerialPort>,
     pub serial_datas: Vec<String>,
 }
 
@@ -16,7 +17,6 @@ impl SerialClient {
         let port = Self::connect(baudrate, port_path.to_string());
         Self {
             port,
-            write_locked: false,
             serial_datas: vec![],
         }
     }
@@ -47,64 +47,33 @@ impl SerialClient {
             Ok(v) => v,
             Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
         };
-        if !self.write_locked {
-            self.write_locked = true;
-            match self.port.write(bytes) {
-                Ok(_) => {
-                    debug!("SHIELD: Sent {}", string);
-                    self.write_locked = false;
-                    true
-                }
-                Err(e) => {
-                    error!("SHIELD: Failed to send {}: {}", string, e);
-                    self.write_locked = false;
-                    false
-                }
-            }
-        } else {
-            debug!(
-                "SHIELD: Command not sent, waiting for serial unlock: {}",
-                string
-            );
-            false
-        }
-    }
-
-    fn push_serial_data(&mut self, string: String) {
-        self.serial_datas.push(string);
-    }
-
-    pub fn read_incoming_raw_data(&mut self) -> Vec<String> {
-        let mut serial_buf: Vec<u8> = vec![0; 1000];
-        let mut data_vec: Vec<String> = vec![];
-        match self.port.read(serial_buf.as_mut_slice()) {
-            Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-            Err(e) => eprintln!("{:?}", e),
+        let result = self.port.write(bytes);
+        
+        match result {
             Ok(_) => {
-                match self.parse_at_response_to_string(serial_buf) {
-                    Some(v) => {
-                        println!("V: {}", v);
-                        data_vec.push(v);
-                    }
-                    None => { warn!("SHIELD: No data found in serial buffer"); }
-                }
+                debug!("SHIELD: Sent {}", string);
+                true
+            }
+            Err(e) => {
+                error!("SHIELD: Failed to send {}: {}", string, e);
+                false
             }
         }
-        return data_vec;
     }
 
-    pub fn parse_at_response_to_string(&mut self, buf: Vec<u8>) -> Option<String> {
-        let mut string: String = String::new();
-        let mut input = buf.iter();
-        while let Some(byte) = input.next() {
-            if *byte == b'\n' {
-                debug!("N: Received data: {:?}", string);
-                string.push(*byte as char);
-                return Some(string)
-            } else {
-                string.push(*byte as char);
-            }
+    pub fn read_line(&mut self) -> String {
+        self.port.clear(ClearBuffer::Input).expect("Failed to discard input buffer");
+        let mut reader = BufReader::new(self.port.as_mut());
+        let mut string = String::new();
+        reader.read_line(&mut string).unwrap();
+        string
+    }
+
+    pub fn read_lines(&mut self, line_number: usize) -> Vec<String> {
+        let mut vec_string = vec![];
+        for _ in 0..line_number {
+            vec_string.push(self.read_line());
         }
-        None
+        vec_string
     }
 }
