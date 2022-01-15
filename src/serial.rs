@@ -59,19 +59,29 @@ impl SerialClient {
         }
     }
 
-    pub fn read_line(&mut self) -> String {
-        let mut reader = BufReader::new(self.port.as_mut());
+    pub fn read_line(self) -> String {
+        let mut reader = BufReader::new(self.port.try_clone().unwrap());
         let mut string = String::new();
-        while string.len() == 0 {
-            match reader.read_line(&mut string) {
+        loop {
+            match self.port.bytes_to_read() {
+                Ok(0) => {
+                    break;
+                }
                 Ok(_) => {
-                    if string.len() > 0 {
-                        info!("SHIELD: Received {}", string);
-                        break;
+                    match reader.read_line(&mut string) {
+                        Ok(_) => {
+                            if string.len() > 0 {
+                                info!("SHIELD: Received {}", string);
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            debug!("SHIELD: Failed to read line: {}", e);
+                        }
                     }
                 }
                 Err(e) => {
-                    debug!("SHIELD: Failed to read line: {}", e);
+                    error!("SHIELD: Failed to read: {}", e);
                 }
             }
         }
@@ -80,7 +90,7 @@ impl SerialClient {
 
     pub fn read_lines(&mut self, line_number: usize) -> Vec<String> {
         let mut vec_string = vec![];
-        for _ in 0..line_number-1 {
+        for _ in 0..line_number - 1 {
             vec_string.push(self.read_line());
         }
         vec_string
