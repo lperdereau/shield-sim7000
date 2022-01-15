@@ -1,8 +1,8 @@
 use log::{debug, error, info};
 use serialport::ClearBuffer;
 use serialport::SerialPort;
+use std::io;
 use std::io::Write;
-use std::io::{BufRead, BufReader};
 use std::time::Duration;
 use std::vec;
 
@@ -60,21 +60,21 @@ impl SerialClient {
     }
 
     pub fn read_line(&mut self) -> String {
-        let mut reader = BufReader::new(self.port.try_clone().unwrap());
-        let mut string = String::new();
+        let mut serial_buf: Vec<u8> = vec![0; 1000];
         loop {
             match self.port.bytes_to_read() {
                 Ok(_) => {
-                    match reader.read_line(&mut string) {
-                        Ok(_) => {
-                            if string.len() > 0 {
-                                info!("SHIELD: Received {}", string);
-                                break;
+                    match self.port.read(serial_buf.as_mut_slice()) {
+                        Ok(t) => {
+                            if t > 0 && serial_buf[t] == b'\n' && serial_buf[t-1] == b'\r' {
+                                match std::str::from_utf8(&serial_buf[..t]){
+                                    Ok(v) => return String::from(v),
+                                    Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+                                };
                             }
-                        }
-                        Err(e) => {
-                            debug!("SHIELD: Failed to read line: {}", e);
-                        }
+                        },
+                        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                        Err(e) => eprintln!("{:?}", e),
                     }
                 }
                 Err(e) => {
@@ -82,7 +82,6 @@ impl SerialClient {
                 }
             }
         }
-        return string;
     }
 
     pub fn read_lines(&mut self, line_number: usize) -> Vec<String> {
