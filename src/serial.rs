@@ -61,13 +61,15 @@ impl SerialClient {
 
     pub fn read_line(&mut self) -> String {
         let mut serial_buf: Vec<u8> = vec![0; 1000];
+        let mut cmp: usize = 0;
         loop {
             match self.port.bytes_to_read() {
                 Ok(_) => {
-                    match self.port.read(serial_buf.as_mut_slice()) {
-                        Ok(t) => {
-                            if t > 0 && serial_buf[t] == b'\n' && serial_buf[t-1] == b'\r' {
-                                match std::str::from_utf8(&serial_buf[..t]){
+                    match self.port.read(&mut serial_buf[cmp..]) {
+                        Ok(i) => {
+                            cmp = i;
+                            if i > 0 && serial_buf[i] == b'\n' && serial_buf[i-1] == b'\r' {
+                                match std::str::from_utf8(&serial_buf[..i]){
                                     Ok(v) => return String::from(v),
                                     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
                                 };
