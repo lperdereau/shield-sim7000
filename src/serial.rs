@@ -67,13 +67,15 @@ impl SerialClient {
                 Ok(_) => {
                     match self.port.read(&mut serial_buf[cmp..]) {
                         Ok(i) => {
-                            cmp = cmp+i;
-                            if i > 0 && serial_buf[cmp] == b'\n' && serial_buf[cmp-1] == b'\r' {
-                                match std::str::from_utf8(&serial_buf[..cmp]){
-                                    Ok(v) => return String::from(v),
-                                    Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-                                };
+                            for j in cmp..cmp+i {
+                                if j > 0 && serial_buf[j] == b'\n' && serial_buf[j-1] == b'\r' {
+                                    match std::str::from_utf8(&serial_buf[..cmp]){
+                                        Ok(v) => return String::from(v),
+                                        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+                                    };
+                                }
                             }
+                            cmp = cmp+i;
                         },
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(e) => eprintln!("{:?}", e),
