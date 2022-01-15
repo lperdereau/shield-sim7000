@@ -59,7 +59,7 @@ impl SerialClient {
         }
     }
 
-    pub fn read_line(self) -> String {
+    pub fn read_line(&mut self) -> String {
         let mut reader = BufReader::new(self.port.try_clone().unwrap());
         let mut string = String::new();
         loop {
