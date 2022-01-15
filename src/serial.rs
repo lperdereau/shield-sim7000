@@ -59,28 +59,33 @@ impl SerialClient {
         }
     }
 
-    pub fn read_line(&mut self) -> String {
+    pub fn read_line(&mut self) -> (String, String) {
         let mut serial_buf: Vec<u8> = vec![0; 1000];
         let mut cmp: usize = 0;
         loop {
             match self.port.bytes_to_read() {
-                Ok(_) => {
-                    match self.port.read(&mut serial_buf[cmp..]) {
-                        Ok(i) => {
-                            for j in cmp..cmp+i {
-                                if j > 0 && serial_buf[j] == b'\n' && serial_buf[j-1] == b'\r' {
-                                    match std::str::from_utf8(&serial_buf[..cmp]){
-                                        Ok(v) => return String::from(v),
-                                        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-                                    };
-                                }
+                Ok(_) => match self.port.read(&mut serial_buf[cmp..]) {
+                    Ok(i) => {
+                        for j in cmp..cmp + i {
+                            if j > 0 && serial_buf[j] == b'\n' && serial_buf[j - 1] == b'\r' {
+                                match std::str::from_utf8(&serial_buf[..j]) {
+                                    Ok(v) => {
+                                        match std::str::from_utf8(&serial_buf[j + 1..cmp + i]) {
+                                            Ok(u) => {
+                                                return (v.to_string(), u.to_string());
+                                            }
+                                            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+                                        }
+                                    }
+                                    Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+                                };
                             }
-                            cmp = cmp+i;
-                        },
-                        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                        Err(e) => eprintln!("{:?}", e),
+                        }
+                        cmp = cmp + i;
                     }
-                }
+                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                    Err(e) => eprintln!("{:?}", e),
+                },
                 Err(e) => {
                     error!("SHIELD: Failed to read: {}", e);
                 }
@@ -90,8 +95,11 @@ impl SerialClient {
 
     pub fn read_lines(&mut self, line_number: usize) -> Vec<String> {
         let mut vec_string = vec![];
+        let mut string = String::from("");
         for _ in 0..line_number - 1 {
-            vec_string.push(self.read_line());
+            let (a, b) = self.read_line();
+            vec_string.push([string, a].concat());
+            string = b;
         }
         vec_string
     }
