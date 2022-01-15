@@ -59,38 +59,38 @@ impl SerialClient {
         }
     }
 
-    pub fn read_line(&mut self) -> (String, Option<String>) {
+    pub fn read(&mut self) -> Vec<String> {
         let mut serial_buf: Vec<u8> = vec![0; 1000];
-        let mut cmp: usize = 0;
         match self.port.read(&mut serial_buf.as_mut_slice()) {
             Ok(n) => {
-                for i in cmp..cmp + n {
-                    if i > 0 && serial_buf[i] == b'\n' && serial_buf[i - 1] == b'\r' {
-                        return (
-                            String::from_utf8(serial_buf[..i].to_vec()).unwrap(),
-                            String::from_utf8(serial_buf[i + 1..cmp + n].to_vec()).ok(),
-                        );
-                    }
-                }
-                cmp = cmp + n;
-            },
+                return Self::cutting_bytes_if_crlf(&mut serial_buf)
+                    .iter()
+                    .map(|&s| std::str::from_utf8(s).unwrap().to_string())
+                    .collect::<Vec<String>>();
+            }
             Err(e) => {
                 error!("SHIELD: Failed to read line: {}", e);
             }
         }
-        return (
-            String::from_utf8(serial_buf.to_vec()).unwrap(),
-            None,
-        );
+        return vec![];
+    }
+
+    fn cutting_bytes_if_crlf(bytes: &[u8]) -> Vec<&[u8]> {
+        let mut result: Vec<&[u8]> = vec![];
+        let mut cmp: usize = 0;
+        for i in 0..bytes.len() {
+            if i > 0 && bytes[i] == b'\n' && bytes[i - 1] == b'\r' {
+                result.push(&bytes[cmp..i]);
+            }
+            cmp = cmp + i;
+        }
+        result
     }
 
     pub fn read_lines(&mut self, line_number: usize) -> Vec<String> {
         let mut vec_string = vec![];
-        let mut string = String::from("");
-        for _ in 0..line_number - 1 {
-            let (a, b) = self.read_line();
-            vec_string.push([string, a].concat());
-            string = b;
+        while vec_string.len() < line_number {
+            self.read().iter().for_each(|v| vec_string.push(v.clone()));
         }
         vec_string
     }
