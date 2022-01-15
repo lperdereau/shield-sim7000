@@ -2,9 +2,15 @@ mod at_commands;
 mod regex;
 
 use at_commands_crate::builder::CommandBuilder;
+use at_commands_crate::parser::CommandParser;
 use chrono::offset::Utc;
 use chrono::{DateTime, NaiveDateTime};
 use chrono::{FixedOffset, TimeZone};
+use serialport::ClearBuffer;
+use std::time::Duration;
+use std::{thread, time};
+use std::io::BufReader;
+use std::io::BufRead;
 
 use self::at_commands::{CGNSINF, CGNSPWR};
 use self::regex::GNSS_REGEX;
@@ -14,8 +20,8 @@ use regex_crate::Regex;
 
 #[derive(Debug)]
 pub struct GNSSInfos {
-    pub gnss_run_status: Option<bool>,
-    pub fix_status: Option<bool>,
+    pub gnss_run_status: Option<i32>,
+    pub fix_status: Option<i32>,
     pub datetime: Option<DateTime<Utc>>,
     pub latitude: Option<f64>,
     pub longitude: Option<f64>,
@@ -49,8 +55,8 @@ impl GNSSInfos {
             ));
         }
         Self {
-            gnss_run_status: caps["gnss_run_status"].parse::<bool>().ok(),
-            fix_status: caps["fix_status"].parse::<bool>().ok(),
+            gnss_run_status: caps["gnss_run_status"].parse::<i32>().ok(),
+            fix_status: caps["fix_status"].parse::<i32>().ok(),
             datetime: datetime,
             latitude: caps["lat"].parse().ok(),
             longitude: caps["long"].parse().ok(),
@@ -70,8 +76,7 @@ impl GNSSInfos {
         }
     }
 }
-/*
-#[derive(Debug)]
+
 pub struct GNSSClient {
     client: SerialClient,
 }
@@ -93,39 +98,22 @@ impl GNSSClient {
     }
 
     pub fn is_gnss_fix(&mut self) -> bool {
-        let mut buffer = [0; 10];
-        let execute =CommandBuilder::create_execute(&mut buffer, true)
+        let mut buffer = [0; 128];
+        let execute = CommandBuilder::create_execute(&mut buffer, true)
             .named(CGNSINF)
             .finish()
             .unwrap();
 
-        self.client.send(&execute);
-        time::Duration::from_millis(1000);
-        let gnss_infos: GNSSInfo = self.client.read_incoming_raw_data();
-
-        if fix_status == 1 { true } else { false };
-
-        //check second digit of the response to know the fix status
-        // if 1 GNSS is ready
-        // else retry periodically
-
-
-        true
-    }
-
-    pub fn get_gnss_info(&mut self) -> Vec<str> {
-        let coordinates: Vec<str> = [];
-        let mut buffer = [0; 10];
-        let execute =CommandBuilder::create_execute(&mut buffer, true)
-            .named(CGNSINF)
-            .finish()
-            .unwrap();
-
-        self.client.send(&execute);
-
-        self.client.read_incoming_raw_data();
-
+        thread::sleep(Duration::from_millis(1000));
+        self.client.port.clear(ClearBuffer::Input).expect("Failed to discard input buffer");
+        self.client.send(execute);
+        
+        let mut reader = BufReader::new(self.client.port.as_mut());
+        let mut my_str = String::new();
+        reader.read_line(&mut my_str).unwrap();
+        println!("Command : {:?}", my_str);
+        reader.read_line(&mut my_str).unwrap();
+        println!("Command : {:?}", my_str);
         true
     }
 }
-*/

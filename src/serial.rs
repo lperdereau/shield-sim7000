@@ -1,12 +1,14 @@
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use serialport::SerialPort;
-use std::io::{Read, Write};
+use std::time::Duration;
+use std::{thread, time};
+use std::io::{self, Read, Write};
 
 
 pub struct SerialClient {
-    port: Box<dyn serialport::SerialPort>,
+    pub port: Box<dyn serialport::SerialPort>,
     pub write_locked: bool,
-    pub serial_datas: Vec<u8>,
+    pub serial_datas: Vec<String>,
 }
 
 impl SerialClient {
@@ -20,7 +22,9 @@ impl SerialClient {
     }
 
     fn connect(baudrate: u32, port_path: String) -> Box<dyn SerialPort> {
-        let port = serialport::new(port_path.to_string(), baudrate).open();
+        let port = serialport::new(port_path.to_string(), baudrate)
+            .timeout(Duration::from_millis(10))
+            .open();
 
         match port {
             Ok(port) => {
@@ -66,30 +70,41 @@ impl SerialClient {
         }
     }
 
-    fn push_serial_data(&mut self, byte: &u8) {
-        self.serial_datas.push(*byte);
+    fn push_serial_data(&mut self, string: String) {
+        self.serial_datas.push(string);
     }
 
-    pub fn read_incoming_raw_data(&mut self) { //should return a string
-        let mut serial_data_raw: Vec<u8> = vec![];
-        let mut serial_buf: Vec<u8> = vec![0; 32];
+    pub fn read_incoming_raw_data(&mut self) -> Vec<String> {
+        let mut serial_buf: Vec<u8> = vec![0; 1000];
+        let mut data_vec: Vec<String> = vec![];
         match self.port.read(serial_buf.as_mut_slice()) {
-            Err(e) => {
-                error!("SHIELD: Error reading incoming data: {}", e);
-            }
+            Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+            Err(e) => eprintln!("{:?}", e),
             Ok(_) => {
-                serial_buf.iter().for_each(|byte| {
-                    if b'\n' == *byte {
-                        let string = &String::from_utf8(serial_data_raw.clone()).unwrap();
-                        debug!("SHIELD: Received data: {:?}", string);
-
-                        self.push_serial_data(byte);
-                        serial_data_raw = vec![];
-                    } else {
-                        serial_data_raw.push(*byte);
+                match self.parse_at_response_to_string(serial_buf) {
+                    Some(v) => {
+                        println!("V: {}", v);
+                        data_vec.push(v);
                     }
-                });
+                    None => { warn!("SHIELD: No data found in serial buffer"); }
+                }
             }
         }
+        return data_vec;
+    }
+
+    pub fn parse_at_response_to_string(&mut self, buf: Vec<u8>) -> Option<String> {
+        let mut string: String = String::new();
+        let mut input = buf.iter();
+        while let Some(byte) = input.next() {
+            if *byte == b'\n' {
+                debug!("N: Received data: {:?}", string);
+                string.push(*byte as char);
+                return Some(string)
+            } else {
+                string.push(*byte as char);
+            }
+        }
+        None
     }
 }
