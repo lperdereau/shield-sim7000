@@ -67,9 +67,9 @@ impl SerialClient {
                 Ok(_) => {
                     match self.port.read(&mut serial_buf[cmp..]) {
                         Ok(i) => {
-                            cmp = i;
-                            if i > 0 && serial_buf[i] == b'\n' && serial_buf[i-1] == b'\r' {
-                                match std::str::from_utf8(&serial_buf[..i]){
+                            cmp = cmp+i;
+                            if i > 0 && serial_buf[cmp] == b'\n' && serial_buf[cmp-1] == b'\r' {
+                                match std::str::from_utf8(&serial_buf[..cmp]){
                                     Ok(v) => return String::from(v),
                                     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
                                 };
