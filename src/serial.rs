@@ -64,9 +64,6 @@ impl SerialClient {
         let mut string = String::new();
         loop {
             match self.port.bytes_to_read() {
-                Ok(0) => {
-                    break;
-                }
                 Ok(_) => {
                     match reader.read_line(&mut string) {
                         Ok(_) => {
