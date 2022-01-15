@@ -78,7 +78,7 @@ impl SerialClient {
     fn cutting_bytes_if_crlf(bytes: &[u8]) -> Vec<&[u8]> {
         let mut result: Vec<&[u8]> = vec![];
         let mut cmp: usize = 0;
-        for i in 0..bytes.len() {
+        for i in cmp..bytes.len() {
             if i > 0 && bytes[i] == b'\n' && bytes[i - 1] == b'\r' {
                 result.push(&bytes[cmp..i]);
             }
