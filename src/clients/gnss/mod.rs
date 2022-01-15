@@ -99,7 +99,8 @@ impl GNSSClient {
             .unwrap();
 
         self.client.send(execute);
-        debug!("{:?}", self.client.read_lines(3));
+        debug!("{:?}", self.client.read_lines(4));
+        self.client.clear(serialport::ClearBuffer::All);
         true
     }
 }

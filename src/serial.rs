@@ -1,11 +1,10 @@
 use log::{debug, error, info};
-use serialport::SerialPort;
-use std::time::Duration;
-use std::vec;
 use serialport::ClearBuffer;
+use serialport::SerialPort;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
-
+use std::time::Duration;
+use std::vec;
 
 pub struct SerialClient {
     port: Box<dyn serialport::SerialPort>,
@@ -48,7 +47,6 @@ impl SerialClient {
             Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
         };
         let result = self.port.write(bytes);
-        
         match result {
             Ok(_) => {
                 debug!("SHIELD: Sent {}", string);
@@ -62,18 +60,35 @@ impl SerialClient {
     }
 
     pub fn read_line(&mut self) -> String {
-        self.port.clear(ClearBuffer::Input).expect("Failed to discard input buffer");
         let mut reader = BufReader::new(self.port.as_mut());
         let mut string = String::new();
-        reader.read_line(&mut string).unwrap();
-        string
+        while string.len() == 0 {
+            match reader.read_line(&mut string) {
+                Ok(_) => {
+                    if string.len() > 0 {
+                        info!("SHIELD: Received {}", string);
+                        break;
+                    }
+                }
+                Err(e) => {
+                    debug!("SHIELD: Failed to read line: {}", e);
+                }
+            }
+        }
+        return string;
     }
 
     pub fn read_lines(&mut self, line_number: usize) -> Vec<String> {
         let mut vec_string = vec![];
-        for _ in 0..line_number {
+        for _ in 0..line_number-1 {
             vec_string.push(self.read_line());
         }
         vec_string
+    }
+
+    pub fn clear(&self, buffer: ClearBuffer) {
+        self.port
+            .clear(buffer)
+            .expect("Failed to discard input buffer");
     }
 }
